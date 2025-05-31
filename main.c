@@ -292,25 +292,63 @@ void init_combat(player* p, enemy* e) {
             }
         }
 
-            else if (choice == 3) { // Pray
-          int prayerOutcome = rand() % 3; // Randomly picks 0, 1, or 2
-        switch (prayerOutcome) {
-        case 0: // Divine blessing (HP +50)
-            p->stat.hp += 50;
-            if (p->stat.hp > p->baseStats.hp) p->stat.hp = p->baseStats.hp; // Prevent overheal
-            type("The Divine God blesses you! (+50 HP)\n");
+else if (choice == 3) { // Pray
+    int prayerOutcome = rand() % 2; // Randomly picks 0 (Blessing) or 1 (Curse)
+    
+    switch (prayerOutcome) {
+        case 0: { // Blessings (50% chance)
+            int grace = rand() % 100;
+            
+            if (grace <= 40) { // 40% chance: Cure all status effects
+                p->stat.status.isBurning = false;
+                p->stat.status.isPoisoned = false;
+                p->stat.status.isParalysed = false;
+                type("The Divine God cures your ailments!\n");
+            } 
+            else if (grace <= 60) { // 20% chance: Smite enemy (25% of their HP)
+                int smiteDmg = e->stat.hp / 2;  //yes much needed actually
+                e->stat.hp -= smiteDmg;
+                type("The Divine God smites your foe for %d damage!\n", smiteDmg);
+            } 
+            else if (grace <= 80) { // 20% chance: Heal player (25% of max HP)
+                int healAmount = p->baseStats.hp / 4;
+                p->stat.hp += healAmount;
+                if (p->stat.hp > p->baseStats.hp) p->stat.hp = p->baseStats.hp;
+                type("The Divine God heals you for %d HP!\n", healAmount);
+            } 
+            else { // 20% chance: Temporary ATK boost (+10)
+                p->stat.atk += 10;
+                type("The Divine God blesses you with holy strength! (+10 ATK)\n");
+            }
             break;
-        case 1: // Smite enemy (HP -60)
-            e->stat.hp -= 60;
-            type("The Divine God smites your foe! (-60 HP)\n");
-            break;
-        case 2: // Punishment (HP -50)
-            p->stat.hp -= 50;
-            type("The Divine God punishes you for your sins! (-50 HP)\n");
+        }
+        
+        case 1: { // Curse (50% chance)
+            int jinx = rand() % 100;
+            
+            if (jinx <= 40) { // 40% chance: Burn player
+                p->stat.status.isBurning = true;
+                type("The Divine God's holy flames are purifying you ! (You are now Burning)\n");
+            } 
+            else if (jinx <= 60) { // 20% chance: Lose 25% HP
+                int punishDmg = p->baseStats.hp / 4;
+                p->stat.hp -= punishDmg;
+                type("The Divine God punishes you for %d damage!\n", punishDmg);
+            } 
+            else if (jinx <= 80) { // 20% chance: Paralysis
+                p->stat.status.isParalysed = true;
+                type("The Divine God demands repentance!\n");
+            } 
+            else { // 20% chance: Both lose 25% HP
+                int mutualDmg = p->baseStats.hp / 4;
+                p->stat.hp -= mutualDmg;
+                e->stat.hp -= mutualDmg;
+                type("The Divine God judges both of you! (-%d HP each)\n", mutualDmg);
+            }
             break;
         }
     }
-        
+} 
         else {
             type("Invalid choice.\n");
             continue;
