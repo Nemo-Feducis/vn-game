@@ -95,6 +95,7 @@ typedef struct {
     bool gameTriggers[NUM_TRIGGERS];
     int lvl;
     int xp;
+    int xen;
     stats stat;
     stats baseStats;
     struct {
@@ -123,6 +124,37 @@ typedef struct {
     int lvlReq;
     char* debuff;
 } move;
+
+
+typedef struct {
+    char* name;
+    int xenreq;       // REQUIRED XEN
+    int basedamage;   
+    char* chant;      
+    char* type; 
+    status debuff;    // Status 
+} Spell;
+
+
+Spell allSpells[] = {
+    { 
+        "Fireball", 
+        15,                             // Xen cost
+        30,                             
+        "quiver-crimson tear-ripple",   // Chant phrase
+        "fire", 
+        {false, false, false, true}     // Causes Burn
+    },
+    { 
+        "Spark", 
+        10, 
+        20, 
+        "supplant-white flash-polarity", 
+        "thunder", 
+        {false, true, false, false}     // Causes paralysis
+    }
+};
+
 
 typedef struct {
     char* name;
@@ -336,6 +368,7 @@ void lvlUp(player* p) {
     type("You leveled up!\nYou are now level %d!\n", p->lvl + 1);
     p->lvl += 1;
     p->xp -= 500;
+    p->xen += 4;
     p->baseStats.hp += 50;
     p->baseStats.agility += 3;
     p->baseStats.def += 5;
@@ -414,9 +447,10 @@ void init_combat(player* p, enemy* e) {
     bool isHit;
     while (p->stat.hp > 0 && e->stat.hp > 0) {
         type("Your HP: %d\n", p->stat.hp);
+        ("Xen: %d  \n", p->xen);
         type("%s's HP: %d\n", e->name, e->stat.hp);
         type("What do you do?\n");
-        type("1. Attack\n2. Run Away\n3. Pray\n");
+        type("1. Attack\n2. Run Away\n3. Pray\n4. Chant\n");
         if (scanf("%d", &choice) != 1) {
             type("Invalid input. Please enter a number.\n");
             while (getchar() != '\n');
@@ -445,24 +479,119 @@ void init_combat(player* p, enemy* e) {
                 e->stat.hp -= damage;
                 type("You did %d damage!\n", damage);
             }
-        } else if (choice == 3) {
-            int prayerOutcome = rand() % 3;
-            switch (prayerOutcome) {
-                case 0:
-                    p->stat.hp += 50;
-                    if (p->stat.hp > p->baseStats.hp) p->stat.hp = p->baseStats.hp;
-                    type("The Divine God blesses you! (+50 HP)\n");
-                    break;
-                case 1:
-                    e->stat.hp -= 60;
-                    type("The Divine God smites your foe! (-60 HP)\n");
-                    break;
-                case 2:
-                    p->stat.hp -= 50;
-                    type("The Divine God punishes you for your sins! (-50 HP)\n");
-                    break;
+
+        }
+
+else if (choice == 3) { // Pray
+    int prayerOutcome = rand() % 2; // Randomly picks 0 (Blessing) or 1 (Curse)
+    
+    switch (prayerOutcome) {
+        case 0: { // Blessings (50% chance)
+            int grace = rand() % 100;
+            
+            if (grace <= 40) { // 40% chance: Cure all status effects
+                p->stat.status.isBurning = false;
+                p->stat.status.isPoisoned = false;
+                p->stat.status.isParalysed = false;
+                type("The Divine Goddess cures your ailments!\n");
+            } 
+            else if (grace <= 60) { // 20% chance: Smite enemy (25% of their HP)
+                int smiteDmg = e->stat.hp / 2;  //yes much needed actually
+                e->stat.hp -= smiteDmg;
+                type("The Divine Goddess smites your foe for %d damage!\n", smiteDmg);
+            } 
+            else if (grace <= 80) { // 20% chance: Heal player (25% of max HP)
+                int healAmount = p->baseStats.hp / 4;
+                p->stat.hp += healAmount;
+                if (p->stat.hp > p->baseStats.hp) p->stat.hp = p->baseStats.hp;
+                type("The Divine Goddess heals you for %d HP!\n", healAmount);
+            } 
+            else { // 20% chance: Temporary ATK boost (+10)
+                p->stat.atk += 10;
+                type("The Divine Goddess blesses you with holy strength! (+10 ATK)\n");
             }
-        } else {
+            break;
+        }
+        
+        case 1: { // Curse (50% chance)
+            int jinx = rand() % 100;
+            
+            if (jinx <= 40) { // 40% chance: Burn player
+                p->stat.status.isBurning = true;
+                type("The Divine Goddess' holy flames are purifying you ! (You are now Burning)\n");
+            } 
+            else if (jinx <= 60) { // 20% chance: Lose 25% HP
+                int punishDmg = p->baseStats.hp / 4;
+                p->stat.hp -= punishDmg;
+                type("The Divine Goddess punishes you for %d damage!\n", punishDmg);
+            } 
+            else if (jinx <= 80) { // 20% chance: Paralysis
+                p->stat.status.isParalysed = true;
+                type("The Divine Goddess demands your repentance!\n");
+            } 
+            else { // 20% chance: Both lose 25% HP
+                int mutualDmg = p->baseStats.hp / 4;
+                p->stat.hp -= mutualDmg;
+                e->stat.hp -= mutualDmg;
+                type("The Divine Goddess judges both of you! (-%d HP each)\n", mutualDmg);
+            }
+            break;
+        }
+    }
+} 
+
+            else if (choice == 4) {   // Chant option
+    char input[100];
+    
+    // Get player input
+    type("Enter chant: ");
+    getchar(); // Clear input buffer
+    fgets(input, sizeof(input), stdin);
+    input[strcspn(input, "\n")] = '\0'; // Remove newline
+
+    // Check against all spells
+    Spell *matched_spell = NULL;
+    for (int i = 0; i < sizeof(allSpells)/sizeof(allSpells[0]); i++) {
+        if (strcmp(input, allSpells[i].chant) == 0) {
+            matched_spell = &allSpells[i];
+            break;
+        }
+    }
+
+    if (!matched_spell) {
+        type("Spell Casting Failed!\n");
+        p->stat.hp -= 10;
+        type("You took 10 damage from magical backlash!\n");
+        // DON'T return here - let combat continue
+    }
+    else if (p->xen < matched_spell->xenreq) {
+        type("Spell Casting Failed! (Not enough Xen)\n");
+    }
+    else {
+        // Successful cast
+        p->xen -= matched_spell->xenreq;
+        int damage = matched_spell->basedamage + (5 * p->lvl);  // +5 DMG PER PLAYER'S LEVEL
+        e->stat.hp -= damage;
+        
+        type("%s was cast successfully! You did %d damage to the enemy.\n",
+             matched_spell->name, damage);
+        type("Remaining Xen: %d \n", p->xen);
+
+        // Apply debuffs
+        if (matched_spell->debuff.isBurning) {
+            e->stat.status.isBurning = true;
+            type("The enemy bursts into flames!\n");
+        }
+        if (matched_spell->debuff.isParalysed) {
+            e->stat.status.isParalysed = true;
+            type("The enemy is paralyzed!\n");
+        }
+    }
+    
+}
+    
+        else {
+
             type("Invalid choice.\n");
             continue;
         }
@@ -557,12 +686,14 @@ player* createPlayer(int inventoryCapacity) {
     }
     p->lvl = 1;
     p->xp = 0;
-    p->baseStats = (stats){ 200, 20, 30, 100, 20, (status){ false, false, false, false } };
-    p->stat = (stats){ 200, 20, 30, 100, 20, (status){ false, false, false, false } };
+    p->xen = 30;
+    p->baseStats = (stats){200, 20, 30, 100, 20, (status){false, false, false, false}};
+    p->stat = (stats){200, 20, 30, 100, 20, (status){false, false, false, false}};
     p->equipment.helmet = (item){ .type=equipment, .data.equipment = { .isEquipped = false } };
     p->equipment.armour = (item){ .type=equipment, .data.equipment = { .isEquipped = false } };
     p->equipment.weapon = (item){ .type=equipment, .data.equipment = { .isEquipped = false } };
     p->equipment.accessory = (item){ .type=equipment, .data.equipment = { .isEquipped = false } };
+
     return p;
 }
 
