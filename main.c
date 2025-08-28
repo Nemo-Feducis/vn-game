@@ -43,6 +43,7 @@ typedef enum {
     slime = 0,
     goblin = 1,
     cyclops = 2,
+    direWolf = 3,
     randomEnemy = -1
 } enemyNum;
 
@@ -376,10 +377,20 @@ enemy allEnemy[] = {
         "cyclops", 90,
         { {"club attack", 100, 40, 1, "NULL"}, {"body slam", 50, 60, 0, "NULL"}, {"enrage", 0, 100, -1, "atkBuff"}, {"laser eye", 0, 100, 2, "brn"} },
         1, "dark", tank,
-        { 150, 15, 5, 100, 10, (status){ false, false, false, false } },
+        { 150, 15, 5, 100, 30, (status){ false, false, false, false } },
         { 150, 15, 5, 100, 30, (status){ false, false, false, false } },
         .drops = { {0},  0}, {0}
+    },
+    {
+        "Dire Wolf" , 100,
+        {{"Bite", 50, 90, 1, "NULL"},{"Night Fang", 100, 50, 1, "NULL"},{"Slash", 10, 80, 1, "psn"},{"Howl", 0, 100, -1, "atkBuff"}},
+        1, "dark", tank,
+        { 100, 15, 5, 100, 80, (status){ false, false, false, false } },
+        { 100, 10, 15, 100, 80, (status){ false, false, false, false } },
+        .drops = { {0},  0}, {0}
+
     }
+
 };
 
 // Function declarations
@@ -2348,7 +2359,7 @@ scene* processChoice(scene* currentScene, player* p, int choiceIndex) {
             type("You go back to the dark room.\n");
             return currentScene->nextScenePerChoice[choiceNumber - 1];
         case 203:
-            init_combat(p, createEnemy(p, randomEnemy));
+            init_combat(p, createEnemy(p, direWolf));
             if (!p->gameTriggers[isAlive]) {
                 type("Game Over.\n");
                 return NULL;
